@@ -17,6 +17,20 @@ def connect_to_db():
     return DRIVER.session()
 
 
+def check_node_name(session):
+    result = session.run("MATCH (n:{0}) RETURN count(n) AS total".format(NODE_NAME))
+
+    for record in result:
+        count = record['total']
+        if count > 0:
+            print("Nodes for this NODE_NAME:{0} already exist in the graph.".format(NODE_NAME))
+            sys.exit()
+
+        else:
+            print("\tNODE_NAME:{0} check PASSED".format(NODE_NAME))
+            break
+
+
 def open_files():
     try:
         # TODO: make data directory based on program arg
@@ -33,6 +47,7 @@ def open_files():
 def delete_graph(session):
     print("Cleaning Graph Data...")
 
+    # TODO: this currently does not work for the current size of the graph; neo4j recommends doing this in batches
     #session.run("MATCH (n) OPTIONAL MATCH (n)-[r]-() DELETE n,r")
 
     print("\tDONE")
@@ -40,9 +55,8 @@ def delete_graph(session):
 
 
 def create_node(session, node_id, seq_data_3):
-    session.run("CREATE (node:Node {id: {node_id}, seq_data_3: {seq_data_3}})",
+    session.run("CREATE (node:{0} {id: {node_id}, seq_data_3: {seq_data_3}})".format(NODE_NAME),
                 {"node_id": node_id, "seq_data_3": seq_data_3})
-    pass
 
 
 def create_node_index(session):
@@ -229,6 +243,9 @@ def create_graph():
 
     #delete_graph(session)
 
+    print("Verifying NODE_NAME: {0}".format(NODE_NAME))
+    check_node_name(session)
+
     print("Creating Graph..")
     print()
 
@@ -243,8 +260,8 @@ def enter_cli():
     pass
 
 
-def main(flag_create):
-    if flag_create:
+def main():
+    if CREATE_FLAG:
         create_graph()
 
     enter_cli()
@@ -253,9 +270,13 @@ def main(flag_create):
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--create", action="store_true")
+    parser.add_argument("--node_name", required="true")
 
     args = parser.parse_args()
 
-    main(args.create)
+    CREATE_FLAG = args.create
+    NODE_NAME = args.node_name
+
+    main()
 
 
